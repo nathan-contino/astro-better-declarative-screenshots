@@ -1,0 +1,122 @@
+---
+import { deriveName } from './src/naming.mjs';
+import { existsSync } from 'fs';
+import path from 'path';
+
+interface HighlightData {
+  selector: string;
+  style: string;
+  color: string;
+  label: string;
+  borderWidth: number;
+}
+
+interface Props {
+  url: string;
+  /** explicit filename (without extension) -- overrides auto-derived name */
+  id?: string;
+  /** alt text for the rendered image */
+  alt?: string;
+  /** override window width for this screenshot */
+  width?: number;
+  /** override window height for this screenshot */
+  height?: number;
+  /** capture the full scrollable page height */
+  fullPage?: boolean;
+  /** outputDir relative to project root; falls back to env SCREENSHOTS_DIR or 'src/assets/screenshots' */
+  outputDir?: string;
+}
+
+const {
+  url,
+  id,
+  alt,
+  width,
+  height,
+  fullPage = false,
+  outputDir,
+} = Astro.props;
+
+// parse Highlight children from the rendered slot HTML
+function parseHighlights(html: string): HighlightData[] {
+  const found: HighlightData[] = [];
+  // match <screenshot-highlight data-selector="..." ...></screenshot-highlight>
+  const tagRe = /<screenshot-highlight([^>]*)>/gi;
+  const attrRe = /data-([\w-]+)="([^"]*)"/g;
+  let tagMatch: RegExpExecArray | null;
+  while ((tagMatch = tagRe.exec(html)) !== null) {
+    const attrs: Record<string, string> = {};
+    let attrMatch: RegExpExecArray | null;
+    while ((attrMatch = attrRe.exec(tagMatch[1])) !== null) {
+      attrs[attrMatch[1]] = attrMatch[2];
+    }
+    if (attrs['selector']) {
+      found.push({
+        selector:    attrs['selector'] ?? '',
+        style:       attrs['style'] ?? 'border',
+        color:       attrs['color'] ?? '#f60',
+        label:       attrs['label'] ?? '',
+        borderWidth: parseInt(attrs['border-width'] ?? '3', 10),
+      });
+    }
+  }
+  return found;
+}
+
+const slotHtml = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const highlights = parseHighlights(slotHtml);
+
+const name = id ?? deriveName(url, highlights);
+
+// resolve output directory: prop > env > default
+const resolvedOutputDir = outputDir
+  ?? process.env.SCREENSHOTS_DIR
+  ?? 'src/assets/screenshots';
+
+// resolve the public path the browser/img uses
+// images in src/assets/ go through Astro's asset pipeline; for simplicity
+// screenshots should live in public/ or be referenced via /
+// we store in outputDir and reference via a root-relative path
+const imgPath = `/${resolvedOutputDir.replace(/^(\.\/|src\/)/, '')}/${name}.png`;
+
+// check whether the file exists (relative to cwd, which is the project root in Astro builds)
+const absolutePath = path.resolve(process.cwd(), resolvedOutputDir, `${name}.png`);
+const fileExists = existsSync(absolutePath);
+
+const strict = process.env.SCREENSHOTS_STRICT === 'true';
+if (!fileExists && strict) {
+  throw new Error(
+    `[astro-better-declarative-screenshots] Missing screenshot: ${name}.png\n` +
+    `Run \`take-screenshots\` to generate it, or set SCREENSHOTS_STRICT=false to use placeholders.`
+  );
+}
+
+// data attributes encode the screenshot spec for the CLI scanner
+// so `discover.mjs` can also pick these up from the built HTML if needed
+const specData = JSON.stringify({ url, highlights, width, height, fullPage });
+---
+<figure
+  class="screenshot-figure"
+  data-screenshot-name={name}
+  data-screenshot-spec={specData}
+>
+  {fileExists ? (
+    <img
+      src={imgPath}
+      alt={alt ?? name.replace(/-/g, ' ')}
+      loading="lazy"
+      decoding="async"
+      class="screenshot-img"
+    />
+  ) : (
+    <div
+      class="screenshot-placeholder"
+      role="img"
+      aria-label={alt ?? `Placeholder for ${name}`}
+      style={`width:${width ?? 1280}px;max-width:100%;aspect-ratio:${(width ?? 1280) / (height ?? 800)};background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#999;font-size:14px;border:1px dashed #ccc;`}
+    >
+      Screenshot not yet generated: {name}.png<br />
+      Run <code>take-screenshots</code> to generate it.
+    </div>
+  )}
+</figure>
