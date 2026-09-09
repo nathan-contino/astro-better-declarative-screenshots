@@ -4,7 +4,7 @@
 import { readFileSync } from 'fs';
 import { glob } from 'glob';
 import path from 'path';
-import { deriveName } from './naming.mjs';
+import { deriveName } from 'astro-better-declarative-screenshots';
 
 /**
  * @typedef {Object} HighlightSpec

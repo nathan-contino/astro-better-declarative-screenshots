@@ -1,13 +1,13 @@
 // Astro integration entry point.
 // usage in astro.config.mjs:
-//   import screenshots from 'astro-better-declarative-screenshots';
+//   import screenshots from 'generate-declarative-screenshots';
 //   export default defineConfig({ integrations: [screenshots()] });
 
-import { loadConfig } from './src/config.mjs';
+import { loadConfig } from 'astro-better-declarative-screenshots';
 import path from 'path';
 
 /**
- * @param {Partial<import('./src/config.mjs').ConfigSchema['_type']>} [integrationConfig]
+ * @param {Partial<import('astro-better-declarative-screenshots').ConfigSchema['_type']>} [integrationConfig]
  * @returns {import('astro').AstroIntegration}
  */
 export default function screenshotsIntegration(integrationConfig = {}) {
@@ -51,6 +51,5 @@ export default function screenshotsIntegration(integrationConfig = {}) {
 }
 
 // re-export utilities consumers may want
-export { loadConfig } from './src/config.mjs';
+export { loadConfig, deriveName } from 'astro-better-declarative-screenshots';
 export { discoverScreenshots } from './src/discover.mjs';
-export { deriveName } from './src/naming.mjs';

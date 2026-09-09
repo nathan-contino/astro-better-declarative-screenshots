@@ -2,7 +2,7 @@
 // injects highlights, takes the screenshot, then cleans up.
 
 import { chromium, firefox, webkit } from 'playwright';
-import { injectHighlights, scrollIntoView } from './highlight.mjs';
+import { injectHighlights, scrollIntoView } from 'astro-better-declarative-screenshots';
 
 const BROWSERS = { webkit, chromium, firefox };
 
@@ -10,7 +10,7 @@ const BROWSERS = { webkit, chromium, firefox };
  * @typedef {Object} CaptureOptions
  * @property {string} url - full URL including host
  * @property {string} name - screenshot name (for logging)
- * @property {Array<import('./highlight.mjs').HighlightSpec>} highlights
+ * @property {Array<import('astro-better-declarative-screenshots').HighlightSpec>} highlights
  * @property {number} [width=1280]
  * @property {number} [height=800]
  * @property {boolean} [fullPage=false]

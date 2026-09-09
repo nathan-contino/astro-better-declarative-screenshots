@@ -5,7 +5,7 @@
 
 import path from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
-import { loadConfig } from '../src/config.mjs';
+import { loadConfig } from 'astro-better-declarative-screenshots';
 import { discoverScreenshots } from '../src/discover.mjs';
 import { startDocker, stopDocker } from '../src/docker.mjs';
 import { capturePage, createBrowserContext } from '../src/capture.mjs';

@@ -10,7 +10,7 @@ import path from 'path';
  * Start the Docker service described in config.docker and wait for it to be healthy.
  * After the healthcheck passes, runs docker.postStart if defined.
  *
- * @param {import('./config.mjs').DockerConfig} dockerConfig
+ * @param {import('astro-better-declarative-screenshots').DockerConfig} dockerConfig
  * @param {string} projectRoot
  * @returns {Promise<void>}
  */
@@ -52,7 +52,7 @@ export async function startDocker(dockerConfig, projectRoot) {
  * Stop containers started for this session.
  * Does NOT remove volumes -- use `docker compose down -v` manually to reset seed data.
  *
- * @param {import('./config.mjs').DockerConfig} dockerConfig
+ * @param {import('astro-better-declarative-screenshots').DockerConfig} dockerConfig
  * @param {string} projectRoot
  */
 export function stopDocker(dockerConfig, projectRoot) {
