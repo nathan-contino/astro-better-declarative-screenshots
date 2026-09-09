@@ -82,13 +82,13 @@ const ConfigSchema = z.object({
   strict: z.boolean().default(process.env.SCREENSHOTS_STRICT === 'true'),
 
   // called once before all screenshots are taken (good for login flows)
-  beforeAll: z.function().args(z.any()).returns(z.promise(z.any())).optional(),
+  beforeAll: z.function().optional(),
 
   // called before each individual screenshot
-  beforeScreenshot: z.function().args(z.any(), z.any()).returns(z.promise(z.any())).optional(),
+  beforeScreenshot: z.function().optional(),
 
   // called once after all screenshots are taken
-  afterAll: z.function().returns(z.promise(z.any())).optional(),
+  afterAll: z.function().optional(),
 });
 
 export async function loadConfig(projectRoot) {
