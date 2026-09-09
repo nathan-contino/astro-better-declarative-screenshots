@@ -48,34 +48,26 @@ async function main() {
     });
   }
 
-  if (config.beforeAll) {
-    console.log('[screenshots] running beforeAll hook');
-    // beforeAll receives a bare fetch/page context -- for login flows,
-    // pass a Playwright context so the hook can authenticate
-    const { browser, context } = await createBrowserContext({
-      browser: config.browser,
-      width: config.window.width,
-      height: config.window.height,
-      colorScheme: config.colorScheme,
-    });
-    await config.beforeAll(context).catch(e => {
-      console.error('[screenshots] beforeAll hook failed:', e.message);
-      browser.close();
-      process.exit(1);
-    });
-    await browser.close();
-  }
-
-  const errors = [];
-  let captured = 0;
-
-  // use a persistent browser context across all screenshots to avoid repeated launch overhead
+  // create one browser context shared across beforeAll and all captures so
+  // session cookies from login are preserved throughout
   const { browser, context } = await createBrowserContext({
     browser: config.browser,
     width: config.window.width,
     height: config.window.height,
     colorScheme: config.colorScheme,
   });
+
+  if (config.beforeAll) {
+    console.log('[screenshots] running beforeAll hook');
+    await config.beforeAll(context).catch(e => {
+      console.error('[screenshots] beforeAll hook failed:', e.message);
+      browser.close();
+      process.exit(1);
+    });
+  }
+
+  const errors = [];
+  let captured = 0;
 
   for (const spec of toCapture) {
     const fullUrl = spec.url.startsWith('http')

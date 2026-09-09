@@ -24,7 +24,22 @@ describe('loadConfig', () => {
     await expect(loadConfig(tmpDir)).rejects.toThrow(/No screenshot.config.mjs/);
   });
 
-  it('loads a minimal valid config', async () => {
+  it('loads a minimal valid config (no docker)', async () => {
+    writeConfig(`
+export default {
+  baseUrl: 'http://localhost:9011',
+};
+`);
+    const config = await loadConfig(tmpDir);
+    expect(config.baseUrl).toBe('http://localhost:9011');
+    expect(config.docker).toBeUndefined();
+    // defaults applied
+    expect(config.browser).toBe('webkit');
+    expect(config.outputDir).toBe('./src/assets/screenshots');
+    expect(config.colorScheme).toBe('light');
+  });
+
+  it('loads a config with docker settings', async () => {
     writeConfig(`
 export default {
   baseUrl: 'http://localhost:9011',
@@ -34,32 +49,18 @@ export default {
 };
 `);
     const config = await loadConfig(tmpDir);
-    expect(config.baseUrl).toBe('http://localhost:9011');
-    // defaults applied
-    expect(config.browser).toBe('webkit');
-    expect(config.outputDir).toBe('./src/assets/screenshots');
-    expect(config.colorScheme).toBe('light');
+    expect(config.docker.healthcheck.url).toBe('http://localhost:9011/api/status');
   });
 
   it('applies window defaults', async () => {
-    writeConfig(`
-export default {
-  baseUrl: 'http://localhost:9011',
-  docker: { healthcheck: { url: 'http://localhost:9011/' } },
-};
-`);
+    writeConfig(`export default { baseUrl: 'http://localhost:9011' };`);
     const config = await loadConfig(tmpDir);
     expect(config.window.width).toBe(1280);
     expect(config.window.height).toBe(800);
   });
 
   it('applies chrome defaults', async () => {
-    writeConfig(`
-export default {
-  baseUrl: 'http://localhost:9011',
-  docker: { healthcheck: { url: 'http://localhost:9011/' } },
-};
-`);
+    writeConfig(`export default { baseUrl: 'http://localhost:9011' };`);
     const config = await loadConfig(tmpDir);
     expect(config.chrome.style).toBe('safari-macos');
     expect(config.chrome.showUrl).toBe(true);
@@ -71,7 +72,6 @@ export default {
 export default {
   baseUrl: 'http://localhost:9011',
   outputDir: 'public/screenshots',
-  docker: { healthcheck: { url: 'http://localhost:9011/' } },
 };
 `);
     const config = await loadConfig(tmpDir);
@@ -79,12 +79,7 @@ export default {
   });
 
   it('rejects an invalid baseUrl', async () => {
-    writeConfig(`
-export default {
-  baseUrl: 'not-a-url',
-  docker: { healthcheck: { url: 'http://localhost:9011/' } },
-};
-`);
+    writeConfig(`export default { baseUrl: 'not-a-url' };`);
     await expect(loadConfig(tmpDir)).rejects.toThrow(/invalid/i);
   });
 
@@ -92,7 +87,6 @@ export default {
     writeConfig(`
 export default {
   baseUrl: 'http://localhost:9011',
-  docker: { healthcheck: { url: 'http://localhost:9011/' } },
   beforeScreenshot: async (page, spec) => {},
 };
 `);

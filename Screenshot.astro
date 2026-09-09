@@ -1,5 +1,6 @@
 ---
 import { deriveName } from './src/naming.mjs';
+import { loadConfig } from './src/config.mjs';
 import { existsSync } from 'fs';
 import path from 'path';
 
@@ -68,18 +69,26 @@ const highlights = parseHighlights(slotHtml);
 
 const name = id ?? deriveName(url, highlights);
 
-// resolve output directory: prop > env > default
-const resolvedOutputDir = outputDir
-  ?? process.env.SCREENSHOTS_DIR
-  ?? 'src/assets/screenshots';
+// resolve output directory: prop > env > screenshot.config.mjs > default
+let resolvedOutputDir = outputDir ?? process.env.SCREENSHOTS_DIR;
+if (!resolvedOutputDir) {
+  try {
+    const cfg = await loadConfig(process.cwd());
+    resolvedOutputDir = cfg.outputDir;
+  } catch {
+    resolvedOutputDir = 'src/assets/screenshots';
+  }
+}
 
-// resolve the public path the browser/img uses
-// images in src/assets/ go through Astro's asset pipeline; for simplicity
-// screenshots should live in public/ or be referenced via /
-// we store in outputDir and reference via a root-relative path
-const imgPath = `/${resolvedOutputDir.replace(/^(\.\/|src\/)/, '')}/${name}.png`;
+// resolve the public path the browser/img uses.
+// files in public/ are served from the root, so strip 'public/' prefix.
+// files in src/assets/ go through Astro's pipeline -- reference via root-relative path.
+const servePath = resolvedOutputDir
+  .replace(/^\.\//, '')
+  .replace(/^public\//, '');
+const imgPath = `/${servePath}/${name}.png`;
 
-// check whether the file exists (relative to cwd, which is the project root in Astro builds)
+// check whether the file exists on disk (uses full resolvedOutputDir, not stripped)
 const absolutePath = path.resolve(process.cwd(), resolvedOutputDir, `${name}.png`);
 const fileExists = existsSync(absolutePath);
 

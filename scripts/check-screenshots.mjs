@@ -50,26 +50,21 @@ async function main() {
     });
   }
 
-  if (config.beforeAll) {
-    const { browser, context } = await createBrowserContext({
-      browser: config.browser,
-      width: config.window.width,
-      height: config.window.height,
-    });
-    await config.beforeAll(context).catch(e => {
-      console.error('[check-screenshots] beforeAll hook failed:', e.message);
-      browser.close();
-      process.exit(1);
-    });
-    await browser.close();
-  }
-
+  // create one browser context shared across beforeAll and all captures
   const { browser, context } = await createBrowserContext({
     browser: config.browser,
     width: config.window.width,
     height: config.window.height,
     colorScheme: config.colorScheme,
   });
+
+  if (config.beforeAll) {
+    await config.beforeAll(context).catch(e => {
+      console.error('[check-screenshots] beforeAll hook failed:', e.message);
+      browser.close();
+      process.exit(1);
+    });
+  }
 
   const failures = [];
   const missing = [];

@@ -152,9 +152,43 @@ Path to a `docker-compose.yml` file, relative to the project root. The CLI runs 
 
 The specific Docker Compose service to start. If omitted, all services in the file are started.
 
-### `docker.kickstart`
+### `docker.bootstrap`
 
-Path to a kickstart/bootstrap file to pass into the container. The file's content is available inside the container as the `SCREENSHOT_KICKSTART_CONTENT` environment variable, and its absolute path as `SCREENSHOT_KICKSTART_PATH`. Wire these into your `docker-compose.yml` as needed.
+Path to a seed/bootstrap file to pass into the container, relative to the project root. Two environment variables become available inside `docker-compose.yml`:
+
+- `SCREENSHOT_BOOTSTRAP_PATH` -- absolute path to the file on the host
+- `SCREENSHOT_BOOTSTRAP_CONTENT` -- the file's full text content
+
+Wire these into your container however your app needs them. Examples:
+
+**FusionAuth** (kickstart):
+```yaml
+environment:
+  FUSIONAUTH_APP_KICKSTART_FILE: ${SCREENSHOT_BOOTSTRAP_PATH}
+```
+
+**Node.js app** (seed script via bind mount):
+```yaml
+volumes:
+  - ${SCREENSHOT_BOOTSTRAP_PATH}:/app/seed.json:ro
+```
+
+**Generic** (pass as env var for a custom entrypoint):
+```yaml
+environment:
+  APP_SEED_DATA: ${SCREENSHOT_BOOTSTRAP_CONTENT}
+```
+
+`kickstart` is accepted as a legacy alias for `bootstrap`.
+
+### `docker.postStart`
+
+Optional shell command to run after the health check passes and before `beforeAll`. Runs in the project root with the project's environment. Use for database migrations, extra seeding, or any setup that can't be bundled into the container's startup.
+
+```js
+postStart: 'node scripts/seed-extra.mjs'
+// or: 'docker exec myapp-1 npm run db:migrate'
+```
 
 ### `docker.healthcheck.url`
 

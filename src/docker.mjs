@@ -1,15 +1,16 @@
 // manages the Docker container lifecycle for screenshot sessions.
-// starts the container, optionally loads a kickstart file, then polls
-// a health check URL until the app is ready (or timeout).
+// starts the container, optionally loads a bootstrap/kickstart file, polls
+// a health check URL until the app is ready, then runs an optional postStart command.
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import path from 'path';
 
 /**
  * Start the Docker service described in config.docker and wait for it to be healthy.
+ * After the healthcheck passes, runs docker.postStart if defined.
  *
- * @param {import('./config.mjs').ConfigSchema['_type']['docker']} dockerConfig
+ * @param {import('./config.mjs').DockerConfig} dockerConfig
  * @param {string} projectRoot
  * @returns {Promise<void>}
  */
@@ -21,11 +22,14 @@ export async function startDocker(dockerConfig, projectRoot) {
     : null;
 
   if (composePath) {
-    const env = buildEnv(dockerConfig.env ?? {}, dockerConfig.kickstart, projectRoot);
+    // support both 'bootstrap' (preferred) and 'kickstart' (legacy alias)
+    const bootstrapPath = dockerConfig.bootstrap ?? dockerConfig.kickstart;
+    const env = buildEnv(dockerConfig.env ?? {}, bootstrapPath, projectRoot);
+    const serviceArg = dockerConfig.service ? ` ${dockerConfig.service}` : '';
 
-    console.log(`[docker] starting services via ${path.basename(composePath)}`);
+    console.log(`[docker] starting services via ${path.relative(projectRoot, composePath)}`);
     execSync(
-      `docker compose -f "${composePath}" up -d${dockerConfig.service ? ' ' + dockerConfig.service : ''}`,
+      `docker compose -f "${composePath}" up -d${serviceArg}`,
       { stdio: 'inherit', env: { ...process.env, ...env } }
     );
   }
@@ -33,12 +37,22 @@ export async function startDocker(dockerConfig, projectRoot) {
   console.log(`[docker] waiting for ${dockerConfig.healthcheck.url}`);
   await pollHealthcheck(dockerConfig.healthcheck);
   console.log('[docker] app is ready');
+
+  if (dockerConfig.postStart) {
+    console.log(`[docker] running postStart: ${dockerConfig.postStart}`);
+    execSync(dockerConfig.postStart, {
+      stdio: 'inherit',
+      cwd: projectRoot,
+      env: process.env,
+    });
+  }
 }
 
 /**
- * Stop and remove containers started for this session.
+ * Stop containers started for this session.
+ * Does NOT remove volumes -- use `docker compose down -v` manually to reset seed data.
  *
- * @param {import('./config.mjs').ConfigSchema['_type']['docker']} dockerConfig
+ * @param {import('./config.mjs').DockerConfig} dockerConfig
  * @param {string} projectRoot
  */
 export function stopDocker(dockerConfig, projectRoot) {
@@ -47,10 +61,7 @@ export function stopDocker(dockerConfig, projectRoot) {
   const composePath = path.resolve(projectRoot, dockerConfig.compose);
   console.log('[docker] stopping services');
   try {
-    execSync(
-      `docker compose -f "${composePath}" down`,
-      { stdio: 'inherit' }
-    );
+    execSync(`docker compose -f "${composePath}" down`, { stdio: 'inherit' });
   } catch (e) {
     console.warn('[docker] warning: docker compose down failed:', e.message);
   }
@@ -59,37 +70,50 @@ export function stopDocker(dockerConfig, projectRoot) {
 async function pollHealthcheck({ url, timeout = 60000, interval = 2000 }) {
   const deadline = Date.now() + timeout;
   let lastError;
+  let attempts = 0;
 
   while (Date.now() < deadline) {
+    attempts++;
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(interval) });
-      if (res.ok) return;
+      if (res.ok) {
+        if (attempts > 1) process.stdout.write('\n');
+        return;
+      }
       lastError = new Error(`HTTP ${res.status}`);
     } catch (e) {
       lastError = e;
     }
+    process.stdout.write('.');
     await sleep(interval);
   }
 
+  process.stdout.write('\n');
   throw new Error(
-    `[docker] health check timed out after ${timeout}ms waiting for ${url}: ${lastError?.message}`
+    `[docker] health check timed out after ${timeout}ms waiting for ${url}` +
+    (lastError ? `: ${lastError.message}` : '')
   );
 }
 
-function buildEnv(extraEnv, kickstartPath, projectRoot) {
+function buildEnv(extraEnv, bootstrapPath, projectRoot) {
   const env = { ...extraEnv };
-  if (kickstartPath) {
-    const absPath = path.resolve(projectRoot, kickstartPath);
+  if (bootstrapPath) {
+    const absPath = path.resolve(projectRoot, bootstrapPath);
     let content;
     try {
       content = readFileSync(absPath, 'utf8');
     } catch {
-      throw new Error(`[docker] kickstart file not found: ${absPath}`);
+      throw new Error(`[docker] bootstrap file not found: ${absPath}`);
     }
-    // pass kickstart content as an env var; the docker-compose file is expected
-    // to wire it into the container as FUSIONAUTH_APP_KICKSTART_FILE or similar
+    // expose bootstrap content and path as env vars.
+    // the docker-compose.yml can wire these into the container however it needs.
+    // for FusionAuth: set FUSIONAUTH_APP_KICKSTART_FILE to SCREENSHOT_BOOTSTRAP_PATH.
+    // for other apps: mount the file or use the content as a seed script input.
+    env.SCREENSHOT_BOOTSTRAP_CONTENT = content;
+    env.SCREENSHOT_BOOTSTRAP_PATH    = absPath;
+    // legacy alias for backward compat
     env.SCREENSHOT_KICKSTART_CONTENT = content;
-    env.SCREENSHOT_KICKSTART_PATH = absPath;
+    env.SCREENSHOT_KICKSTART_PATH    = absPath;
   }
   return env;
 }

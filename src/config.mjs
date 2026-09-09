@@ -9,9 +9,9 @@ const WindowSizeSchema = z.object({
 });
 
 const DockerSchema = z.object({
-  // path to a docker-compose file, or an inline service definition
+  // path to a docker-compose file
   compose: z.string().optional(),
-  // service name to wait on (if using compose)
+  // specific service to start (omit to start all services in the compose file)
   service: z.string().optional(),
   // health check URL -- polled until 200 or timeout
   healthcheck: z.object({
@@ -19,9 +19,19 @@ const DockerSchema = z.object({
     timeout: z.number().int().positive().default(60000),
     interval: z.number().int().positive().default(2000),
   }),
-  // path to a kickstart/bootstrap file passed to the container
+  // path to a bootstrap/seed file to pass into the container.
+  // exposed to docker-compose.yml as env vars SCREENSHOT_BOOTSTRAP_PATH and
+  // SCREENSHOT_BOOTSTRAP_CONTENT. wire these into your container however it needs
+  // (e.g. FUSIONAUTH_APP_KICKSTART_FILE=SCREENSHOT_BOOTSTRAP_PATH for FusionAuth,
+  //  or mount the path as a volume for other apps).
+  bootstrap: z.string().optional(),
+  // legacy alias for bootstrap -- 'kickstart' still works
   kickstart: z.string().optional(),
-  // arbitrary env vars merged into the container environment
+  // shell command to run after the health check passes and before beforeAll.
+  // runs in the project root. useful for database migrations, seed scripts, etc.
+  // example: 'node scripts/seed.js' or 'docker exec app npm run db:seed'
+  postStart: z.string().optional(),
+  // arbitrary env vars merged into the container environment when running compose up
   env: z.record(z.string()).optional(),
 });
 
@@ -64,8 +74,8 @@ const ConfigSchema = z.object({
   // default color scheme
   colorScheme: z.enum(['light', 'dark']).default('light'),
 
-  // docker service configuration
-  docker: DockerSchema,
+  // docker service configuration -- optional when the app is already running
+  docker: DockerSchema.optional(),
 
   // strict mode -- fail the build when a screenshot file is missing
   // defaults to true when SCREENSHOTS_STRICT=true env var is set
@@ -95,7 +105,7 @@ export async function loadConfig(projectRoot) {
     );
   }
 
-  const raw = await import(pathToFileURL(configPath).href);
+  const raw = await import(/* @vite-ignore */ pathToFileURL(configPath).href);
   const config = raw.default ?? raw;
 
   const result = ConfigSchema.safeParse(config);
@@ -109,4 +119,4 @@ export async function loadConfig(projectRoot) {
   return result.data;
 }
 
-export { ConfigSchema };
+export { ConfigSchema, DockerSchema };

@@ -25,14 +25,26 @@ export default {
 
   // docker setup -- start the app and wait for it to be healthy
   docker: {
-    compose:  'docker-compose.yml',
+    compose:  'screenshots/docker-compose.yml',
     service:  'fusionauth',
-    kickstart: 'kickstart/kickstart.json',
+
+    // bootstrap seeds initial data. the file path is passed to docker-compose.yml
+    // as SCREENSHOT_BOOTSTRAP_PATH and its content as SCREENSHOT_BOOTSTRAP_CONTENT.
+    // wire those env vars into your container however it needs.
+    // for FusionAuth: FUSIONAUTH_APP_KICKSTART_FILE: ${SCREENSHOT_BOOTSTRAP_PATH}
+    // for other apps: mount the path as a volume or use the content as a seed script
+    bootstrap: 'screenshots/kickstart/kickstart.json',
+
     healthcheck: {
       url:      'http://localhost:9011/api/status',
-      timeout:  90000,
-      interval: 2000,
+      timeout:  120000,
+      interval: 3000,
     },
+
+    // optional shell command to run after health check passes.
+    // runs in the project root. use for migrations, extra seeding, etc.
+    // postStart: 'node scripts/extra-seed.mjs',
+
     env: {
       DATABASE_PASSWORD: 'change-in-production',
     },
