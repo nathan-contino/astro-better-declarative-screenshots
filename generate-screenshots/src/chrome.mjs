@@ -3,6 +3,7 @@
 
 import sharp from 'sharp';
 
+const WINDOW_RADIUS = 10;
 const CHROME_HEIGHT = 52;
 const TL_CY = 26;
 const TL_X0 = 18;
@@ -42,6 +43,18 @@ export async function addChrome(screenshotBuffer, opts = {}) {
     .png()
     .toBuffer();
 
+  // round the bottom corners of the page to match the window border radius
+  const cornerMask = `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidth}" height="${pageHeight}">
+    <path d="M 0,0 H ${pageWidth} V ${pageHeight - WINDOW_RADIUS}
+      Q ${pageWidth},${pageHeight} ${pageWidth - WINDOW_RADIUS},${pageHeight}
+      H ${WINDOW_RADIUS} Q 0,${pageHeight} 0,${pageHeight - WINDOW_RADIUS} Z"
+      fill="white"/>
+  </svg>`;
+  const maskedPage = await sharp(screenshotBuffer)
+    .composite([{ input: Buffer.from(cornerMask), blend: 'dest-in' }])
+    .png()
+    .toBuffer();
+
   const layers = [];
 
   if (shadowBlur > 0) {
@@ -56,7 +69,7 @@ export async function addChrome(screenshotBuffer, opts = {}) {
     layers.push({ input: shadowBuf, top: 0, left: 0 });
   }
 
-  layers.push({ input: screenshotBuffer, top: windowY + chromeHeight, left: windowX });
+  layers.push({ input: maskedPage, top: windowY + chromeHeight, left: windowX });
   layers.push({ input: chromeBuf, top: windowY, left: windowX });
 
   const base = {
@@ -112,8 +125,8 @@ function buildChromeSvg({ windowWidth, chromeHeight, dark, showUrl, url }) {
       <stop offset="100%" stop-color="${bgBottom}"/>
     </linearGradient>
   </defs>
-  <rect width="${windowWidth}" height="${chromeHeight}" fill="url(#bg)" rx="10" ry="10"/>
-  <rect x="0" y="${chromeHeight - 10}" width="${windowWidth}" height="10" fill="${bgBottom}"/>
+  <rect width="${windowWidth}" height="${chromeHeight}" fill="url(#bg)" rx="${WINDOW_RADIUS}" ry="${WINDOW_RADIUS}"/>
+  <rect x="0" y="${chromeHeight - WINDOW_RADIUS}" width="${windowWidth}" height="${WINDOW_RADIUS}" fill="${bgBottom}"/>
   <line x1="0" y1="${chromeHeight - 0.5}" x2="${windowWidth}" y2="${chromeHeight - 0.5}"
     stroke="${separator}" stroke-width="1"/>
   ${lights}
@@ -136,7 +149,7 @@ function buildShadowSvg({ totalWidth, totalHeight, windowX, windowY, windowWidth
   <rect
     x="${windowX}" y="${windowY}"
     width="${windowWidth}" height="${windowHeight}"
-    rx="10" ry="10"
+    rx="${WINDOW_RADIUS}" ry="${WINDOW_RADIUS}"
     fill="white"
     filter="url(#shadow)"
   />

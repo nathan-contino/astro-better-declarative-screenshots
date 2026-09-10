@@ -93,10 +93,10 @@ async function main() {
 
       let finalBuffer = rawBuffer;
 
-      if (config.chrome.style !== 'none') {
+      if (config.chrome.style !== 'none' && config.chrome.renderIn !== 'css') {
         finalBuffer = await addChrome(rawBuffer, {
           url: fullUrl,
-          dark: config.chrome.dark,
+          dark: config.chrome.theme === 'dark',
           showUrl: config.chrome.showUrl,
           shadowBlur: config.chrome.shadowBlur,
           shadowPadding: config.chrome.shadowPadding,

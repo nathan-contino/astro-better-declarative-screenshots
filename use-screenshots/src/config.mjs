@@ -36,15 +36,21 @@ const DockerSchema = z.object({
 });
 
 const ChromeSchema = z.object({
-  // 'safari-macos' | 'none'
-  style: z.enum(['safari-macos', 'none']).default('safari-macos'),
+  // chrome style: 'safari-macos' (classic pre-2026), 'golden-gate' (macOS 26 Liquid Glass), 'none'
+  style: z.enum(['safari-macos', 'golden-gate', 'linux', 'windows', 'none']).default('safari-macos'),
+  // 'css' renders the window frame in HTML/CSS in the Screenshot component (recommended);
+  // 'png' composites the chrome into the image at capture time (legacy)
+  renderIn: z.enum(['css', 'png']).default('png'),
   // show the URL bar in the chrome
   showUrl: z.boolean().default(true),
-  // dark chrome (title bar) regardless of page dark mode
-  dark: z.boolean().default(false),
-  // drop shadow radius in pixels; 0 to disable
+  // light or dark chrome (title bar)
+  theme: z.enum(['light', 'dark']).default('light'),
+  // override the URL shown in the address bar (e.g. a public hostname instead of localhost)
+  // replaces the config-level baseUrl prefix in the displayed URL
+  baseUrl: z.string().url().optional(),
+  // png-only: drop shadow radius in pixels; 0 to disable
   shadowBlur: z.number().int().min(0).default(40),
-  // extra padding around the window to make room for the shadow
+  // png-only: extra padding around the window to make room for the shadow
   shadowPadding: z.number().int().min(0).default(48),
 });
 

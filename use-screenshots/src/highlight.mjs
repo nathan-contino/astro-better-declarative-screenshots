@@ -32,6 +32,13 @@ export async function injectHighlights(page, highlights) {
       }
 
       const rect = target.getBoundingClientRect();
+
+      // skip hidden/zero-size elements (e.g. hidden inputs inside a tokenizer widget)
+      if (rect.width === 0 && rect.height === 0) {
+        console.warn(`[screenshot] skipping zero-size element for selector: ${spec.selector}`);
+        continue;
+      }
+
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
 
