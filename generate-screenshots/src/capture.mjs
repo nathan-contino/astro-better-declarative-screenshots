@@ -50,6 +50,7 @@ export async function capturePage(opts) {
       context = await browser.newContext({
         viewport: { width, height },
         colorScheme,
+        deviceScaleFactor: 2,
       });
     }
 
@@ -103,6 +104,7 @@ export async function createBrowserContext({ browser: browserName = 'webkit', wi
   const context = await browser.newContext({
     viewport: { width, height },
     colorScheme,
+    deviceScaleFactor: 2,
   });
   return { browser, context };
 }
