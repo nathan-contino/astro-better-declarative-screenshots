@@ -63,8 +63,10 @@ export async function capturePage(opts) {
       await beforeScreenshot(page, { url, name, highlights });
     }
 
-    // if there are highlights, scroll the first target into view
-    if (highlights.length > 0 && highlights[0].selector) {
+    if (fullPage) {
+      // full-page captures render from y=0; scrolling first would displace sticky/fixed elements
+      await page.evaluate(() => window.scrollTo(0, 0));
+    } else if (highlights.length > 0 && highlights[0].selector) {
       await scrollIntoView(page, highlights[0].selector).catch(() => {});
     }
 
