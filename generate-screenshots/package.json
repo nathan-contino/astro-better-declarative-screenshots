@@ -5,7 +5,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/better-static-sites/better-static-sites.github.io.git",
-    "directory": "astro-better-declarative-screenshots/generate-screenshots"
+    "directory": "lib/declarative-screenshots/generate-screenshots"
   },
   "homepage": "https://better-static-sites.github.io",
   "bugs": {
@@ -24,8 +24,7 @@
   "files": [
     "index.mjs",
     "src/",
-    "scripts/",
-    "browser/"
+    "scripts/"
   ],
   "dependencies": {
     "playwright": "^1.45.0",

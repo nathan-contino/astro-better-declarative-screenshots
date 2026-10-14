@@ -5,7 +5,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/better-static-sites/better-static-sites.github.io.git",
-    "directory": "astro-better-declarative-screenshots/use-screenshots"
+    "directory": "lib/declarative-screenshots/use-screenshots"
   },
   "homepage": "https://better-static-sites.github.io",
   "bugs": {
